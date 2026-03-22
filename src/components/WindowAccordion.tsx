@@ -1,10 +1,11 @@
 type Sample = {
   ts_ms?: string;
   Sensor_data?: {
-    AD8232?: { ecgHrBpm?: number };
-    FSR?: { fsrAU?: number };
-    INMP441?: { respBpm?: number };
-    MAX30105?: { maxSpO2?: number };
+    AD8232?: { ecgHrBpm?: number; ecgAdc?: number; ecgLeadsOff?: number; ecgMappedmV?: number };
+    FSR?: { fsrAU?: number; fsrAdc?: number };
+    INMP441?: { micLevel?: number; respBpm?: number };
+    MAX30105?: { maxSpO2?: number; maxHrBpm?: number };
+    TMP117?: { tempC?: number; online?: number };
   };
 };
 
@@ -15,13 +16,64 @@ type WindowDoc = {
   samples?: Sample[];
 };
 
-function sampleSummary(s?: Sample) {
-  if (!s) return "—";
-  const hr = s.Sensor_data?.AD8232?.ecgHrBpm ?? "–";
-  const uc = s.Sensor_data?.FSR?.fsrAU ?? "–";
-  const resp = s.Sensor_data?.INMP441?.respBpm ?? "–";
-  const spo2 = s.Sensor_data?.MAX30105?.maxSpO2 ?? "–";
-  return `HR:${hr} | FSR:${uc} | Resp:${resp} | SpO₂:${spo2}`;
+function SensorRow({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex justify-between text-[11px] text-gray-700">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-medium">{value ?? "–"}</span>
+    </div>
+  );
+}
+
+function SampleCard({ s }: { s: Sample }) {
+  const sd = s.Sensor_data ?? {};
+  const ad = sd.AD8232 ?? {};
+  const fsr = sd.FSR ?? {};
+  const mic = sd.INMP441 ?? {};
+  const max = sd.MAX30105 ?? {};
+  const tmp = sd.TMP117 ?? {};
+
+  return (
+    <div className="rounded border border-gray-100 bg-gray-50 p-2">
+      <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+        <span className="font-mono">{s.ts_ms ?? "ts"}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded bg-white p-2 border border-gray-100">
+          <div className="text-[11px] font-semibold text-gray-700 mb-1">AD8232 (ECG)</div>
+          <SensorRow label="ecgHrBpm" value={ad.ecgHrBpm} />
+          <SensorRow label="ecgAdc" value={ad.ecgAdc} />
+          <SensorRow label="ecgLeadsOff" value={ad.ecgLeadsOff} />
+          <SensorRow label="ecgMappedmV" value={ad.ecgMappedmV} />
+        </div>
+
+        <div className="rounded bg-white p-2 border border-gray-100">
+          <div className="text-[11px] font-semibold text-gray-700 mb-1">FSR (Pressure)</div>
+          <SensorRow label="fsrAU" value={fsr.fsrAU} />
+          <SensorRow label="fsrAdc" value={fsr.fsrAdc} />
+        </div>
+
+        <div className="rounded bg-white p-2 border border-gray-100">
+          <div className="text-[11px] font-semibold text-gray-700 mb-1">INMP441 (Mic/Resp)</div>
+          <SensorRow label="micLevel" value={mic.micLevel} />
+          <SensorRow label="respBpm" value={mic.respBpm} />
+        </div>
+
+        <div className="rounded bg-white p-2 border border-gray-100">
+          <div className="text-[11px] font-semibold text-gray-700 mb-1">MAX30105 (SpO₂/HR)</div>
+          <SensorRow label="maxSpO2" value={max.maxSpO2} />
+          <SensorRow label="maxHrBpm" value={max.maxHrBpm} />
+        </div>
+
+        <div className="rounded bg-white p-2 border border-gray-100">
+          <div className="text-[11px] font-semibold text-gray-700 mb-1">TMP117 (Temp)</div>
+          <SensorRow label="tempC" value={tmp.tempC} />
+          <SensorRow label="online" value={tmp.online} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function WindowAccordion({ logs }: { logs: WindowDoc[] }) {
@@ -54,15 +106,8 @@ export function WindowAccordion({ logs }: { logs: WindowDoc[] }) {
           </summary>
 
           <div className="mt-3 space-y-2 text-xs text-gray-700">
-            {(log.samples ?? []).slice(0, 5).map((s, i) => (
-              <div key={i} className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <div className="flex justify-between">
-                  <span className="font-mono text-[11px] text-gray-500">
-                    {s.ts_ms ?? "ts"}
-                  </span>
-                  <span>{sampleSummary(s)}</span>
-                </div>
-              </div>
+            {(log.samples ?? []).slice(0, 3).map((s, i) => (
+              <SampleCard key={i} s={s} />
             ))}
 
             <details className="mt-2">
@@ -77,3 +122,5 @@ export function WindowAccordion({ logs }: { logs: WindowDoc[] }) {
     </div>
   );
 }
+
+export default WindowAccordion;
