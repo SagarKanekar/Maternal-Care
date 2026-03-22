@@ -3,6 +3,7 @@ import {
   subscribeCurrentSensorData,
   subscribeLatestPrediction,
   subscribeRecentSensorLogs,
+  debugListPredictions,
 } from "../lib/firebaseData";
 import { CurrentVitalsCard } from "../components/CurrentVitalsCard";
 import { PredictionCard } from "../components/PredictionCard";
@@ -14,6 +15,9 @@ const Dashboard = () => {
   const [prediction, setPrediction] = useState<PredictionDoc | null>(null);
 
   useEffect(() => {
+    // one-off debug to see what's in the predictions collection
+    debugListPredictions();
+
     const unsubSensor = subscribeCurrentSensorData(setSensor);
     const unsubLogs = subscribeRecentSensorLogs(5, setLogs);
     const unsubPred = subscribeLatestPrediction(setPrediction);

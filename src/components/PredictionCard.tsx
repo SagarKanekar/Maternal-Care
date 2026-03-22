@@ -2,7 +2,11 @@ import type { PredictionDoc } from "../lib/firebaseData";
 
 export function PredictionCard({ prediction }: { prediction: PredictionDoc | null }) {
   if (!prediction) {
-    return <p className="text-sm text-gray-500">No predictions yet. Run the backend inference notebook.</p>;
+    return (
+      <p className="text-sm text-gray-500">
+        No predictions yet. Run the backend inference notebook to generate one.
+      </p>
+    );
   }
 
   return (

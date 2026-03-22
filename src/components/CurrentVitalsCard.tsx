@@ -7,7 +7,11 @@ type SensorData = {
 
 export function CurrentVitalsCard({ data }: { data: SensorData | null }) {
   if (!data) {
-    return <p className="text-sm text-gray-500">No live sensor data.</p>;
+    return (
+      <p className="text-sm text-gray-500">
+        No live sensor data (Sensor_data/current not found).
+      </p>
+    );
   }
 
   const hr =
@@ -20,10 +24,18 @@ export function CurrentVitalsCard({ data }: { data: SensorData | null }) {
 
   return (
     <div className="space-y-1">
-      <p>Heart Rate: <strong>{hr}</strong> bpm</p>
-      <p>Respiration: <strong>{resp}</strong> bpm</p>
-      <p>SpO₂: <strong>{spo2}</strong> %</p>
-      <p>FSR (pressure proxy): <strong>{fsr}</strong></p>
+      <p>
+        Heart Rate: <strong>{hr}</strong> bpm
+      </p>
+      <p>
+        Respiration: <strong>{resp}</strong> bpm
+      </p>
+      <p>
+        SpO₂: <strong>{spo2}</strong> %
+      </p>
+      <p>
+        FSR (pressure proxy): <strong>{fsr}</strong>
+      </p>
     </div>
   );
 }
