@@ -4,30 +4,23 @@ import {
   subscribeLatestPrediction,
   subscribeRecentSensorLogs,
   debugListPredictions,
+  PredictionDoc,
 } from "../lib/firebaseData";
 import { CurrentVitalsCard } from "../components/CurrentVitalsCard";
 import { PredictionCard } from "../components/PredictionCard";
-import type { PredictionDoc } from "../lib/firebaseData";
-import { getDocs, collection } from "firebase/firestore";
-import { db } from "../lib/firebaseCore";
+import { WindowAccordion } from "../components/WindowAccordion";
 
-const Dashboard = () => {
-  const [sensor, setSensor] = useState<any | null>(null);
+type SensorData = any; // keep as-is; your hook already returns a shape
+
+export function DashboardPage() {
+  const [sensor, setSensor] = useState<SensorData | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [prediction, setPrediction] = useState<PredictionDoc | null>(null);
 
   useEffect(() => {
     (async () => {
-      const preds = await getDocs(collection(db, "predictions"));
-      console.log("[DEBUG] predictions docs size:", preds.size);
-      preds.forEach(d => console.log("[DEBUG] pred doc", d.id, d.data()));
-
-      const logs = await getDocs(collection(db, "sensor_logs_10s"));
-      console.log("[DEBUG] sensor_logs_10s docs size:", logs.size);
-      logs.forEach(d => console.log("[DEBUG] log doc", d.id, d.data()));
+      await debugListPredictions(); // optional debug
     })();
-    // one-off debug to see what's in the predictions collection
-    debugListPredictions();
 
     const unsubSensor = subscribeCurrentSensorData(setSensor);
     const unsubLogs = subscribeRecentSensorLogs(5, setLogs);
@@ -41,52 +34,54 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="p-4 space-y-6">
-      <section className="border rounded-lg p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">
-          Step 1: Live Sensor Snapshot (from Firebase)
-        </h2>
-        <CurrentVitalsCard data={sensor} />
-      </section>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <h1 className="text-xl font-bold text-gray-800">Maternal Care Pipeline</h1>
 
-      <section className="border rounded-lg p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">
-          Step 2: Historical Windows (sensor_logs_10s)
-        </h2>
-        <p className="text-xs text-gray-500 mb-2">
-          Showing the last few 10-second windows exactly as stored in Firestore.
-        </p>
-        <pre className="text-xs bg-gray-900 text-gray-100 rounded p-2 max-h-64 overflow-auto">
-          {logs.length ? JSON.stringify(logs, null, 2) : "No logs yet."}
-        </pre>
-      </section>
+        {/* Top cards */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 text-sm font-semibold text-gray-700">
+              Step 1: Live Sensor Snapshot (from Firebase)
+            </div>
+            {sensor ? (
+              <CurrentVitalsCard data={sensor} />
+            ) : (
+              <p className="text-sm text-gray-500">
+                No live sensor data (Sensor_data/current not found).
+              </p>
+            )}
+          </div>
 
-      <section className="border rounded-lg p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">
-          Step 3: Model Output (CTU‑CHB Inference)
-        </h2>
-        <PredictionCard prediction={prediction} />
-      </section>
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 text-sm font-semibold text-gray-700">
+              Step 3: Model Output (CTU-CHB Inference)
+            </div>
+            <PredictionCard prediction={prediction} />
+          </div>
+        </div>
 
-      <section className="border rounded-lg p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">
-          Step 4: How the Pipeline Works
-        </h2>
-        <p className="text-sm text-gray-700">
-          The pregnancy belt sends ECG, FSR, respiration, and SpO₂ signals to
-          Firebase. These are stored as 10-second windows in the{" "}
-          <code>sensor_logs_10s</code> collection. A backend Python script
-          (running the same code as our Jupyter notebook) downloads the latest
-          window, maps its sensor values to the CTU‑CHB clinical model inputs,
-          fills missing clinical parameters with median values from the training
-          dataset, and runs a pretrained neural network to estimate fetal
-          status. The prediction (class label and confidence scores) is written
-          back into the <code>predictions</code> collection, which this page
-          subscribes to in real time.
-        </p>
-      </section>
+        {/* Historical windows */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 text-sm font-semibold text-gray-700">
+            Step 2: Historical Windows (sensor_logs_10s)
+          </div>
+          <WindowAccordion logs={logs} />
+        </div>
+
+        {/* Pipeline explainer */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm text-sm text-gray-700">
+          <div className="font-semibold text-gray-800 mb-1">Step 4: How the Pipeline Works</div>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Sensors (ECG, FSR, Resp, SpO₂) send data to Firebase.</li>
+            <li>Data is stored as 10-second windows in <code>sensor_logs_10s</code>.</li>
+            <li>The backend notebook/script reads the latest window, maps to CTU‑CHB inputs, fills missing clinical medians, and runs the pretrained model.</li>
+            <li>The prediction is written to <code>predictions</code> and displayed here in real time.</li>
+          </ol>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
-export default Dashboard;
+export default DashboardPage;
