@@ -8,11 +8,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigation } from "@/components/Navigation";
 import { Scene3D } from "@/components/3d/Scene3D";
 import { Heart3D } from "@/components/3d/Heart3D";
-import { Heart, User, Stethoscope, Mail, Lock, ArrowRight } from "lucide-react";
+import { Heart, User, Stethoscope, Mail, Lock, ArrowRight, BadgeCheck, Building2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import {
+  getDoctorProfile,
   getUserProfile,
   signInWithEmail,
+  signOutCurrentUser,
   signUpWithEmailAndRole,
   type UserRole,
 } from "@/lib/auth";
@@ -26,7 +28,13 @@ const Login = () => {
     email: "",
     password: "",
     name: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    // Doctor-specific
+    doctorId: "",
+    licenseNumber: "",
+    specialization: "",
+    hospitalName: "",
+    phone: "",
   });
 
   const mapFirebaseError = (errorCode?: string) => {
@@ -57,11 +65,34 @@ const Login = () => {
       return;
     }
 
+    if (!isLogin && userRole === "doctor" && !formData.doctorId.trim()) {
+      toast.error("Doctor ID is required for doctor registration");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       if (isLogin) {
         const cred = await signInWithEmail(formData.email.trim(), formData.password);
+
+        // Doctor login: verify doctorId matches stored profile
+        if (userRole === "doctor") {
+          if (!formData.doctorId.trim()) {
+            await signOutCurrentUser();
+            toast.error("Please enter your Doctor ID.");
+            setIsSubmitting(false);
+            return;
+          }
+          const doctorProfile = await getDoctorProfile(cred.user.uid);
+          if (!doctorProfile || doctorProfile.doctorId !== formData.doctorId.trim()) {
+            await signOutCurrentUser();
+            toast.error("Doctor ID does not match our records. Access denied.");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const profile = await getUserProfile(cred.user.uid);
         const destinationRole = profile?.role ?? userRole;
         toast.success(`Welcome back ${destinationRole === "mother" ? "Mom" : "Doctor"}!`);
@@ -72,6 +103,11 @@ const Login = () => {
           password: formData.password,
           name: formData.name.trim(),
           role: userRole,
+          doctorId: userRole === "doctor" ? formData.doctorId.trim() : undefined,
+          licenseNumber: userRole === "doctor" ? formData.licenseNumber.trim() : undefined,
+          specialization: userRole === "doctor" ? formData.specialization.trim() : undefined,
+          hospitalName: userRole === "doctor" ? formData.hospitalName.trim() : undefined,
+          phone: formData.phone.trim() || undefined,
         });
 
         toast.success(`Account created for ${userRole === "mother" ? "Mom" : "Doctor"}!`);
@@ -87,6 +123,9 @@ const Login = () => {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const isDoctorLogin = userRole === "doctor" && isLogin;
+  const isDoctorSignup = userRole === "doctor" && !isLogin;
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,6 +189,7 @@ const Login = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Name (signup only) */}
                   {!isLogin && (
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
@@ -200,6 +240,7 @@ const Login = () => {
                     </div>
                   </div>
 
+                  {/* Confirm Password (signup only) */}
                   {!isLogin && (
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -216,6 +257,92 @@ const Login = () => {
                         />
                       </div>
                     </div>
+                  )}
+
+                  {/* Doctor ID – required for doctor login and signup */}
+                  {(isDoctorLogin || isDoctorSignup) && (
+                    <div className="space-y-2">
+                      <Label htmlFor="doctorId">
+                        Doctor ID {isDoctorSignup && <span className="text-destructive">*</span>}
+                      </Label>
+                      <div className="relative">
+                        <BadgeCheck className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="doctorId"
+                          type="text"
+                          placeholder="Enter your Doctor ID"
+                          value={formData.doctorId}
+                          onChange={(e) => handleInputChange("doctorId", e.target.value)}
+                          className="pl-10 border-primary/20 focus:border-primary"
+                          required={isDoctorSignup}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extra doctor fields – signup only */}
+                  {isDoctorSignup && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="licenseNumber">License Number</Label>
+                        <div className="relative">
+                          <BadgeCheck className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="licenseNumber"
+                            type="text"
+                            placeholder="Medical license number"
+                            value={formData.licenseNumber}
+                            onChange={(e) => handleInputChange("licenseNumber", e.target.value)}
+                            className="pl-10 border-primary/20 focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="specialization">Specialization</Label>
+                        <div className="relative">
+                          <Stethoscope className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="specialization"
+                            type="text"
+                            placeholder="e.g. Obstetrics & Gynecology"
+                            value={formData.specialization}
+                            onChange={(e) => handleInputChange("specialization", e.target.value)}
+                            className="pl-10 border-primary/20 focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="hospitalName">Hospital / Clinic</Label>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="hospitalName"
+                            type="text"
+                            placeholder="Hospital or clinic name"
+                            value={formData.hospitalName}
+                            onChange={(e) => handleInputChange("hospitalName", e.target.value)}
+                            className="pl-10 border-primary/20 focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="Contact number"
+                            value={formData.phone}
+                            onChange={(e) => handleInputChange("phone", e.target.value)}
+                            className="pl-10 border-primary/20 focus:border-primary"
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                   
                   <Button type="submit" className="w-full btn-hero" disabled={isSubmitting}>
