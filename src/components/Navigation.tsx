@@ -1,16 +1,63 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Heart, User, Stethoscope, Menu } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { auth } from "@/lib/firebaseCore";
+import { getUserProfile, signOutCurrentUser, type UserRole } from "@/lib/auth";
+import { toast } from "sonner";
 
 export const Navigation = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [profileName, setProfileName] = useState<string>("");
+  const [profileRole, setProfileRole] = useState<UserRole | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+
+      if (!user) {
+        setProfileName("");
+        setProfileRole(null);
+        return;
+      }
+
+      try {
+        const profile = await getUserProfile(user.uid);
+        setProfileName(profile?.name ?? "");
+        setProfileRole(profile?.role ?? null);
+      } catch {
+        setProfileName("");
+        setProfileRole(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const dashboardPath = profileRole === "doctor" ? "/doctor-dashboard" : "/mother-dashboard";
+  const loggedInLabel = profileName || "User";
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOutCurrentUser();
+      toast.success("Signed out successfully.");
+      setIsMenuOpen(false);
+    } catch {
+      toast.error("Could not sign out. Please try again.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const navItems = [
     { name: "Home", path: "/", icon: Heart },
     { name: "Pipeline", path: "/pipeline", icon: Stethoscope },
-    { name: "Login", path: "/login", icon: User },
+    { name: currentUser ? "Dashboard" : "Login", path: currentUser ? dashboardPath : "/login", icon: User },
     { name: "About", path: "/contact", icon: Stethoscope },
   ];
 
@@ -46,10 +93,23 @@ export const Navigation = () => {
                 </Link>
               );
             })}
-            
-            <Button variant="outline" asChild>
-              <Link to="/login">Get Started</Link>
-            </Button>
+
+            {currentUser ? (
+              <>
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span>Logged in: {loggedInLabel}</span>
+                </div>
+                <Button variant="outline" onClick={handleSignOut} disabled={isSigningOut}>
+                  {isSigningOut ? "Signing out..." : "Log out"}
+                </Button>
+              </>
+            ) : (
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span>Logged out</span>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -86,12 +146,21 @@ export const Navigation = () => {
                   </Link>
                 );
               })}
-              
-              <Button variant="outline" asChild className="mt-2">
-                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                  Get Started
-                </Link>
-              </Button>
+
+              {currentUser ? (
+                <>
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+                    Logged in: {loggedInLabel}
+                  </div>
+                  <Button variant="outline" className="mt-2" onClick={handleSignOut} disabled={isSigningOut}>
+                    {isSigningOut ? "Signing out..." : "Log out"}
+                  </Button>
+                </>
+              ) : (
+                <div className="mt-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+                  Logged out
+                </div>
+              )}
             </div>
           </div>
         )}

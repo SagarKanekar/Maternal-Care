@@ -1,20 +1,27 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigation } from "@/components/Navigation";
 import { Scene3D } from "@/components/3d/Scene3D";
 import { Heart3D } from "@/components/3d/Heart3D";
 import { Heart, User, Stethoscope, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import {
+  getUserProfile,
+  signInWithEmail,
+  signUpWithEmailAndRole,
+  type UserRole,
+} from "@/lib/auth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [userRole, setUserRole] = useState<"mother" | "doctor">("mother");
+  const [userRole, setUserRole] = useState<UserRole>("mother");
   const [isLogin, setIsLogin] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -22,22 +29,58 @@ const Login = () => {
     confirmPassword: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const mapFirebaseError = (errorCode?: string) => {
+    switch (errorCode) {
+      case "auth/invalid-credential":
+        return "Invalid email or password.";
+      case "auth/email-already-in-use":
+        return "This email is already registered.";
+      case "auth/weak-password":
+        return "Password should be at least 6 characters.";
+      case "auth/too-many-requests":
+        return "Too many attempts. Please try again later.";
+      default:
+        return "Authentication failed. Please try again.";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin && formData.password !== formData.confirmPassword) {
       toast.error("Passwords don't match");
       return;
     }
 
-    // Simulate authentication
-    toast.success(`Welcome ${userRole === "mother" ? "Mom" : "Doctor"}! 👋`);
-    
-    // Navigate to appropriate dashboard
-    if (userRole === "mother") {
-      navigate("/mother-dashboard");
-    } else {
-      navigate("/doctor-dashboard");
+    if (!isLogin && !formData.name.trim()) {
+      toast.error("Please enter your full name");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (isLogin) {
+        const cred = await signInWithEmail(formData.email.trim(), formData.password);
+        const profile = await getUserProfile(cred.user.uid);
+        const destinationRole = profile?.role ?? userRole;
+        toast.success(`Welcome back ${destinationRole === "mother" ? "Mom" : "Doctor"}!`);
+        navigate(destinationRole === "mother" ? "/mother-dashboard" : "/doctor-dashboard");
+      } else {
+        await signUpWithEmailAndRole({
+          email: formData.email.trim(),
+          password: formData.password,
+          name: formData.name.trim(),
+          role: userRole,
+        });
+
+        toast.success(`Account created for ${userRole === "mother" ? "Mom" : "Doctor"}!`);
+        navigate(userRole === "mother" ? "/mother-dashboard" : "/doctor-dashboard");
+      }
+    } catch (error: any) {
+      toast.error(mapFirebaseError(error?.code));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -92,7 +135,7 @@ const Login = () => {
                 {/* Role Selection */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">I am a:</Label>
-                  <Tabs value={userRole} onValueChange={(value) => setUserRole(value as "mother" | "doctor")}>
+                  <Tabs value={userRole} onValueChange={(value) => setUserRole(value as UserRole)}>
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="mother" className="flex items-center gap-2">
                         <Heart className="h-4 w-4" />
@@ -175,8 +218,8 @@ const Login = () => {
                     </div>
                   )}
                   
-                  <Button type="submit" className="w-full btn-hero">
-                    {isLogin ? "Sign In" : "Create Account"}
+                  <Button type="submit" className="w-full btn-hero" disabled={isSubmitting}>
+                    {isSubmitting ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
@@ -188,6 +231,7 @@ const Login = () => {
                       variant="link" 
                       className="p-0 ml-2 text-primary" 
                       onClick={() => setIsLogin(!isLogin)}
+                      disabled={isSubmitting}
                     >
                       {isLogin ? "Sign up" : "Sign in"}
                     </Button>

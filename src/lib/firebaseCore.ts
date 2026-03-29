@@ -1,18 +1,17 @@
 import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getApp } from "firebase/app";
 
-// TODO: replace this with your actual config from Firebase console
 const firebaseConfig = {
-  apiKey: "REDACTED",
-  authDomain: "pregnancy-belt-fb490.firebaseapp.com",
-  projectId: "pregnancy-belt-fb490",
-  storageBucket: "pregnancy-belt-fb490.firebasestorage.app",
-  messagingSenderId: "621588747978",
-  appId: "1:621588747978:web:ffe72b0614bdeb82aa0633",
-  measurementId: "G-8PLZE53MH4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
-console.log("[DEBUG] app options", getApp().options);
+export const auth = getAuth(app);
 export const db = getFirestore(app);
