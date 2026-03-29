@@ -7,6 +7,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import MotherDashboard from "./pages/MotherDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Questionnaire from "./pages/Questionnaire";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,16 @@ const App = () => (
                 <ProtectedRoute>
                   <RoleRoute role="doctor">
                     <DoctorDashboard />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute role="admin">
+                    <AdminDashboard />
                   </RoleRoute>
                 </ProtectedRoute>
               }
