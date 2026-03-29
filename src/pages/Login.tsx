@@ -95,8 +95,13 @@ const Login = () => {
 
         const profile = await getUserProfile(cred.user.uid);
         const destinationRole = profile?.role ?? userRole;
-        toast.success(`Welcome back ${destinationRole === "mother" ? "Mom" : "Doctor"}!`);
-        navigate(destinationRole === "mother" ? "/mother-dashboard" : "/doctor-dashboard");
+        if (destinationRole === "admin") {
+          toast.success("Welcome, Admin!");
+          navigate("/admin");
+        } else {
+          toast.success(`Welcome back ${destinationRole === "mother" ? "Mom" : "Doctor"}!`);
+          navigate(destinationRole === "mother" ? "/mother-dashboard" : "/doctor-dashboard");
+        }
       } else {
         await signUpWithEmailAndRole({
           email: formData.email.trim(),

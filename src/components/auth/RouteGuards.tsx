@@ -55,7 +55,12 @@ export const RoleRoute: React.FC<RoleRouteProps> = ({ role, children }) => {
   }
 
   if (profile.role !== role) {
-    const ownDashboard = profile.role === "mother" ? "/mother-dashboard" : "/doctor-dashboard";
+    const ownDashboard =
+      profile.role === "mother"
+        ? "/mother-dashboard"
+        : profile.role === "doctor"
+        ? "/doctor-dashboard"
+        : "/admin";
     return <Navigate to={ownDashboard} replace />;
   }
 

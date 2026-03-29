@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebaseCore";
 
-export type UserRole = "mother" | "doctor";
+export type UserRole = "mother" | "doctor" | "admin";
 
 export type UserProfile = {
   uid: string;
