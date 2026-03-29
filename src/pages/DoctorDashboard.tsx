@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Navigation } from "@/components/Navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { getActiveAssignmentsForDoctor } from "@/lib/auth";
 import { 
   Search, 
   User, 
@@ -18,13 +20,29 @@ import {
   Download,
   Clock,
   Phone,
-  FileText
+  FileText,
+  Users
 } from "lucide-react";
 
 const DoctorDashboard = () => {
+  const { user } = useAuth();
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [notes, setNotes] = useState("");
+  const [hasAssignments, setHasAssignments] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    getActiveAssignmentsForDoctor(user.uid)
+      .then((assignments) => {
+        setHasAssignments(assignments.length > 0);
+      })
+      .catch((err) => {
+        console.error("[DoctorDashboard] Failed to load assignments:", err);
+        setHasAssignments(false);
+      });
+  }, [user]);
 
   const [patients] = useState([
     {
@@ -104,7 +122,6 @@ const DoctorDashboard = () => {
   };
 
   const getVitalStatus = (vital: string, value: any) => {
-    // Simplified vital assessment
     switch (vital) {
       case "fetalHeartRate":
         if (value < 110 || value > 160) return "warning";
@@ -132,10 +149,45 @@ const DoctorDashboard = () => {
   );
 
   const sortedPatients = [...filteredPatients].sort((a, b) => {
-    // High-risk patients first
     const riskOrder = { high: 3, moderate: 2, normal: 1 };
     return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
   });
+
+  // Still loading assignment status
+  if (hasAssignments === null) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">Loading dashboard…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No active assignments
+  if (!hasAssignments) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="bg-gradient-hero py-6">
+          <div className="container mx-auto px-4">
+            <div>
+              <h1 className="text-2xl font-bold">Doctor Dashboard</h1>
+              <p className="text-muted-foreground">Monitor your patients' maternal health</p>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
+          <Users className="h-16 w-16 text-muted-foreground mb-6" />
+          <h2 className="text-2xl font-semibold mb-3">No patients assigned yet</h2>
+          <p className="text-muted-foreground max-w-sm">
+            You don't have any active patient assignments. Contact your administrator to get patients assigned to you.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

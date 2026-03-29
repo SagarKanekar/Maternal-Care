@@ -10,7 +10,9 @@ import DoctorDashboard from "./pages/DoctorDashboard";
 import Questionnaire from "./pages/Questionnaire";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
-import Dashboard from "./pages/Dashboard"; // <-- add this
+import Dashboard from "./pages/Dashboard";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute, RoleRoute } from "./components/auth/RouteGuards";
 
 const queryClient = new QueryClient();
 
@@ -20,20 +22,40 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/mother-dashboard" element={<MotherDashboard />} />
-          <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-          <Route path="/questionnaire" element={<Questionnaire />} />
-          <Route path="/contact" element={<Contact />} />
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/mother-dashboard"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute role="mother">
+                    <MotherDashboard />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/doctor-dashboard"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute role="doctor">
+                    <DoctorDashboard />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/questionnaire" element={<Questionnaire />} />
+            <Route path="/contact" element={<Contact />} />
 
-          {/* New route for your ML/Firebase pipeline demo */}
-          <Route path="/pipeline" element={<Dashboard />} />
+            {/* ML/Firebase pipeline demo */}
+            <Route path="/pipeline" element={<Dashboard />} />
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
